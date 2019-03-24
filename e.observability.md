@@ -9,8 +9,10 @@
 <p>
 
 ```bash
-kubectl run nginx --image=nginx --restart=Never --dry-run -o yaml > pod.yaml
-vi pod.yaml
+kubectl run --generator=run-pod/v1 nginx --image=nginx -o yaml --dry-run > pod-1.yaml
+vi pod-1.yaml
+
+
 ```
 
 ```YAML
@@ -32,20 +34,20 @@ spec:
         command: # command definition
         - ls # ls command
   dnsPolicy: ClusterFirst
-  restartPolicy: Never
+  restartPolicy: Always
 status: {}
 ```
 
 ```bash
-kubectl create -f pod.yaml
+kubectl create -f pod-1.yaml
 kubectl describe pod nginx | grep -i liveness # run this to see that liveness probe works
-kubectl delete -f pod.yaml
+kubectl delete -f pod-1.yaml
 ```
 
 </p>
 </details>
 
-### Modify the pod.yaml file so that liveness probe starts kicking in after 5 seconds whereas the period of probing would be 10 seconds. Run it, check the probe, delete it.
+### Modify the pod-1.yaml file so that liveness probe starts kicking in after 5 seconds whereas the period of probing would be 10 seconds. Run it, check the probe, delete it.
 
 <details><summary>show</summary>
 <p>
@@ -68,21 +70,21 @@ spec:
     imagePullPolicy: IfNotPresent
     name: nginx
     resources: {}
-    livenessProbe: 
+    livenessProbe:
       initialDelaySeconds: 5 # add this line
       periodSeconds: 10 # add this line as well
       exec:
         command:
         - ls
   dnsPolicy: ClusterFirst
-  restartPolicy: Never
+  restartPolicy: Always
 status: {}
 ```
 
 ```bash
-kubectl create -f pod.yaml
+kubectl create -f pod-1.yaml
 kubectl describe po nginx | grep -i liveness
-kubectl delete -f pod.yaml
+kubectl delete -f pod-1.yaml
 ```
 
 </p>
@@ -94,8 +96,8 @@ kubectl delete -f pod.yaml
 <p>
 
 ```bash
-kubectl run nginx --image=nginx --dry-run -o yaml --restart=Never --port=80 > pod.yaml
-vi pod.yaml
+kubectl run --generator=run-pod/v1 nginx --image=nginx --port=80 -o yaml --dry-run > pod-2.yaml
+vi pod-2.yaml
 ```
 
 ```YAML
@@ -119,14 +121,14 @@ spec:
         path: / #
         port: 80 #
   dnsPolicy: ClusterFirst
-  restartPolicy: Never
+  restartPolicy: Always
 status: {}
 ```
 
 ```bash
-kubectl create -f pod.yaml
+kubectl create -f pod-2.yaml
 kubectl describe pod nginx | grep -i readiness # to see the pod readiness details
-kubectl delete -f pod.yaml
+kubectl delete -f pod-2.yaml
 ```
 
 </p>
@@ -140,7 +142,7 @@ kubectl delete -f pod.yaml
 <p>
 
 ```bash
-kubectl run busybox --image=busybox --restart=Never -- /bin/sh -c 'i=0; while true; do echo "$i: $(date)"; i=$((i+1)); sleep 1; done'
+kubectl run --generator=run-pod/v1 busybox --image=busybox  -- /bin/sh -c 'i=0; while true; do echo "$i: $(date)"; i=$((i+1)); sleep 1; done'
 kubectl logs busybox -f # follow the logs
 ```
 
@@ -155,7 +157,7 @@ kubectl logs busybox -f # follow the logs
 <p>
 
 ```bash
-kubectl run busybox --restart=Never --image=busybox -- /bin/sh -c 'ls /notexist'
+kubectl run --generator=run-pod/v1 busybox --image=busybox -- /bin/sh -c 'ls /notexist'
 # show that there's an error
 kubectl logs busybox
 kubectl describe po busybox
@@ -171,7 +173,7 @@ kubectl delete po busybox
 <p>
 
 ```bash
-kubectl run busybox --restart=Never --image=busybox -- notexist
+kubectl run --generator=run-pod/v1 busybox --image=busybox -- notexist
 kubectl logs busybox # will bring nothing! container never started
 kubectl describe po busybox # in the events section, you'll see the error
 # also...
