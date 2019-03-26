@@ -29,7 +29,7 @@ kubectl describe cm config
 </p>
 </details>
 
-### Create a configmap from the configmap-files directory named config-files with the following directory tree:
+### Create a configmap from the configmap-files directory with the following files. Called it config-files.
 
 Create the files with
 
