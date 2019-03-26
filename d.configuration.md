@@ -29,6 +29,86 @@ kubectl describe cm config
 </p>
 </details>
 
+### Create a configmap from the configmap-files directory named config-files with the following directory tree:
+
+Create the files with
+
+```bash
+mkdir -p configmap-files
+echo -e "License File" > configmap-files/LICENSE
+echo -e "enemies=aliens\nlives=3\nenemies.color=green" > configmap-files/game.env
+```
+
+<details><summary>show</summary>
+<p>
+
+```bash
+kubectl create configmap config-files --from-file=configmap-files/
+```
+
+</p>
+</details>
+
+### Mount a volume in a nginx pod on /mnt/space-game. Populate it with the data stored in the previous configmap. Check the files inside the pod.
+
+```bash
+kubectl run --generator=run-pod/v1 nginx --image=nginx -o yaml --dry-run > pod.yaml
+```
+
+```YAML
+apiVersion: v1
+kind: Pod
+metadata:
+  creationTimestamp: null
+  labels:
+    run: nginx
+  name: nginx
+spec:
+  containers:
+  - image: nginx
+    imagePullPolicy: IfNotPresent
+    name: nginx
+    resources: {}
+    volumeMounts: # your volume mounts are listed here
+    - name: game-volume # the name that you specified in pod.spec.volumes.name
+      mountPath: /mnt/space-game # the path inside your container
+  dnsPolicy: ClusterFirst
+  restartPolicy: Always
+  volumes: # add a volumes list
+  - name: game-volume # just a name, you'll reference this in the pods
+    configMap:
+      name: config-files # name of your configmap
+status: {}
+```
+```bash
+kubectl create -f pod.yaml
+kubectl exec nginx -- sh -c 'ls /mnt/space-game'
+```
+
+<details><summary>show</summary>
+<p>
+
+```bash
+kubectl create configmap config-files --from-file=configmap-files/
+```
+
+</p>
+</details>
+
+### Modify the previous configmap (e.g change the LICENSE file). Check that the file has been updated automatically in the nginx pod.
+
+<details><summary>show</summary>
+<p>
+
+```bash
+kubectl exec nginx -- sh -c 'cat /mnt/space-game/LICENSE' # Check initial value
+kubectl edit configmaps config-files
+kubectl exec nginx -- sh -c 'cat /mnt/space-game/LICENSE' # Check updated value
+```
+
+</p>
+</details>
+
 ### Create and display a configmap from a file
 
 Create the file with
@@ -43,6 +123,27 @@ echo -e "foo3=lili\nfoo4=lele" > config.txt
 ```bash
 kubectl create cm configmap2 --from-file=config.txt
 kubectl get cm configmap2 -o yaml --export
+```
+
+</p>
+</details>
+
+
+### Create and display a configmap called configmap-two-files from the following two files
+
+Create the files with
+
+```bash
+echo -e "foo1=Hello\nfoo2=World" > welcome.txt
+echo -e "foo3=Bye\nfoo4=World" > farewell.txt
+```
+
+<details><summary>show</summary>
+<p>
+
+```bash
+kubectl create cm configmap-two-files --from-file=welcome.txt  --from-file=farewell.txt
+kubectl get cm configmap-two-files -o yaml --export
 ```
 
 </p>
@@ -166,7 +267,7 @@ status: {}
 
 ```bash
 kubectl create -f pod.yaml
-kubectl exec -it nginx -- env 
+kubectl exec -it nginx -- env
 ```
 
 </p>
