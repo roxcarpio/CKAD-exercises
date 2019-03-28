@@ -280,7 +280,7 @@ kubectl exec -it nginx -- env
 
 ```bash
 kubectl create configmap cmvolume --from-literal=var8=val8 --from-literal=var9=val9
-kubectl run --generator=run-pod/v1 nginx --image=nginx -o yaml --dry-run > pod.yaml
+kubectl run --generator=run-pod/v1 nginx --image=nginx -o yaml --dry-run -o yaml > pod.yaml
 vi pod.yaml
 ```
 
@@ -328,7 +328,7 @@ cat var8 # will show val8
 <p>
 
 ```bash
-kubectl run --generator=run-pod/v1 nginx --image=nginx -o yaml --dry-run > pod.yaml
+kubectl run --generator=run-pod/v1 nginx --image=nginx -o yaml --dry-run -o yaml> pod.yaml
 vi pod.yaml
 ```
 
@@ -362,7 +362,7 @@ status: {}
 <p>
 
 ```bash
-kubectl run --generator=run-pod/v1 nginx --image=nginx -o yaml --dry-run > pod.yaml
+kubectl run --generator=run-pod/v1 nginx --image=nginx -o yaml --dry-run -o yaml> pod.yaml
 vi pod.yaml
 ```
 
@@ -396,7 +396,7 @@ status: {}
 <p>
 
 ```bash
-kubectl run --generator=run-pod/v1 nginx --image=nginx -o yaml --dry-run > pod.yaml
+kubectl run --generator=run-pod/v1 nginx --image=nginx -o yaml --dry-run -o yaml > pod.yaml
 vi pod.yaml
 ```
 
@@ -489,7 +489,7 @@ echo YWRtaW4K | base64 -d # shows 'admin'
 <p>
 
 ```bash
-kubectl run nginx --image=nginx --restart=Never -o yaml --dry-run > pod.yaml
+kubectl run --restart=Never nginx --image=nginx -o yaml --dry-run - > pod.yaml
 vi pod.yaml
 ```
 
@@ -618,13 +618,18 @@ kubectl create -f sa.yaml
 </p>
 </details>
 
-### Create an nginx pod that uses 'myuser' as a service account
+### Create a nginx pod that uses 'myuser' as a service account
 
 <details><summary>show</summary>
 <p>
 
 ```bash
-kubectl run nginx --image=nginx --restart=Never -o yaml --dry-run > pod.yaml
+kubectl run --generator=run-pod/v1 nginx --image=nginx --serviceaccount=myuser
+```
+Alternatively:
+
+```bash
+kubectl run --generator=run-pod/v1 nginx --image=nginx --dry-run -o yaml > pod.yaml
 vi pod.yaml
 ```
 
@@ -637,14 +642,13 @@ metadata:
     run: nginx
   name: nginx
 spec:
-  serviceAccountName: myuser # we use pod.spec.serviceAccountName
+  serviceAccountName: myuser # we use pod.spec.serviceAccountName  
   containers:
   - image: nginx
-    imagePullPolicy: IfNotPresent
     name: nginx
     resources: {}
   dnsPolicy: ClusterFirst
-  restartPolicy: Never
+  restartPolicy: Always
 status: {}
 ```
 
@@ -653,11 +657,40 @@ kubectl create -f pod.yaml
 kubectl describe pod nginx # will see that a new secret called myuser-token-***** has been mounted
 ```
 
-or you can add directly with kubectl run command:
+</p>
+</details>
+
+
+### Create a new service account. Add imagePullsecrets to the already created service account. Create a nginx pod that uses the previous service. Describe the pod in order to see the imagePullPolicy.
+
+<details><summary>show</summary>
+<p>
 
 ```bash
-kubectl run nginx --image=nginx --restart=Never --serviceaccount=myuser -o yaml --dry-run > pod.yaml
-kubectl apply -f pod.yaml
+kubectl create serviceaccount docker-registry-sa
+
+kubectl create secret docker-registry my-registry --docker-server=myregistr.com --docker-username=user --docker-password=user --docker-email=user@mydomain.com
+
+
+```
+
+```YAML
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  creationTimestamp: "2019-03-28T16:15:41Z"
+  name: docker-registry-sa
+  resourceVersion: "49644948" # Remove this line
+  selfLink: /api/v1/namespaces/default/serviceaccounts/docker-registry-sa
+  uid: bb8364d4-5174-11e9-a001-fa163e84ec56
+secrets:
+- name: docker-registry-sa-token-z9w2w
+imagePullSecrets: # Add this line
+- name: my-registry # Add this line
+```
+
+```bash
+kubectl get pods -o yaml --export nginx | grep "serviceAccount:"
 ```
 
 </p>
