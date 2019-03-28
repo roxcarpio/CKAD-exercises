@@ -280,7 +280,7 @@ kubectl exec -it nginx -- env
 
 ```bash
 kubectl create configmap cmvolume --from-literal=var8=val8 --from-literal=var9=val9
-kubectl run nginx --image=nginx --restart=Never -o yaml --dry-run > pod.yaml
+kubectl run --generator=run-pod/v1 nginx --image=nginx -o yaml --dry-run > pod.yaml
 vi pod.yaml
 ```
 
@@ -328,7 +328,7 @@ cat var8 # will show val8
 <p>
 
 ```bash
-kubectl run nginx --image=nginx --restart=Never --dry-run -o yaml > pod.yaml
+kubectl run --generator=run-pod/v1 nginx --image=nginx -o yaml --dry-run > pod.yaml
 vi pod.yaml
 ```
 
@@ -345,11 +345,10 @@ spec:
     runAsUser: 101 # UID for the user
   containers:
   - image: nginx
-    imagePullPolicy: IfNotPresent
     name: nginx
     resources: {}
   dnsPolicy: ClusterFirst
-  restartPolicy: Never
+  restartPolicy: Always
 status: {}
 ```
 
@@ -363,7 +362,41 @@ status: {}
 <p>
 
 ```bash
-kubectl run nginx --image=nginx --restart=Never --dry-run -o yaml > pod.yaml
+kubectl run --generator=run-pod/v1 nginx --image=nginx -o yaml --dry-run > pod.yaml
+vi pod.yaml
+```
+
+```YAML
+apiVersion: v1
+kind: Pod
+metadata:
+  creationTimestamp: null
+  labels:
+    run: nginx
+  name: nginx
+spec:
+  securityContext: # insert this line
+    capabilities: # and this
+      add: ["NET_ADMIN", "SYS_TIME"] # this as well
+  containers:
+  - image: nginx
+    name: nginx
+    resources: {}
+  dnsPolicy: ClusterFirst
+  restartPolicy: Always
+status: {}
+```
+
+</p>
+</details>
+
+### Create the YAML for an nginx pod that runs a container with UID 1000. No need to create the pod.
+
+<details><summary>show</summary>
+<p>
+
+```bash
+kubectl run --generator=run-pod/v1 nginx --image=nginx -o yaml --dry-run > pod.yaml
 vi pod.yaml
 ```
 
@@ -378,15 +411,14 @@ metadata:
 spec:
   containers:
   - image: nginx
-    imagePullPolicy: IfNotPresent
     name: nginx
     securityContext: # insert this line
-      capabilities: # and this
-        add: ["NET_ADMIN", "SYS_TIME"] # this as well
+      runAsUser: 1000 # UID for the user
     resources: {}
   dnsPolicy: ClusterFirst
-  restartPolicy: Never
+  restartPolicy: Always
 status: {}
+
 ```
 
 </p>
