@@ -195,7 +195,7 @@ kubectl get cm configmap4 -o yaml --export
 
 ```bash
 kubectl create cm options --from-literal=var5=val5
-kubectl run nginx --image=nginx --restart=Never --dry-run -o yaml > pod.yaml
+kubectl run --generator=run-pod/v1 nginx --image=nginx --dry-run -o yaml > pod.yaml
 vi pod.yaml
 ```
 
@@ -239,7 +239,7 @@ kubectl exec -it nginx -- env | grep option # will show 'option=val5'
 
 ```bash
 kubectl create configmap anotherone --from-literal=var6=val6 --from-literal=var7=val7
-kubectl run --restart=Never nginx --image=nginx -o yaml --dry-run > pod.yaml
+kubectl run --generator=run-pod/v1 nginx --image=nginx --dry-run -o yaml > pod.yaml
 vi pod.yaml
 ```
 
@@ -273,13 +273,17 @@ kubectl exec -it nginx -- env
 </p>
 </details>
 
-### Create a configMap 'cmvolume' with values 'var8=val8', 'var9=val9'. Load this as a volume inside an nginx pod on path '/etc/lala'. Create the pod and 'ls' into the '/etc/lala' directory.
+### Create a configMap 'bash-script' using the script.sh file. Load this file with permission 777 (octal) inside an nginx pod on path '/etc/example'. Create the pod and run the script.
+Note that the JSON spec doesn’t support octal notation, therefore, translate the octal number to decimal.
+```bash
+echo "echo 'Executing a file inside of a pod :)'" > script.sh
+```
 
 <details><summary>show</summary>
 <p>
 
 ```bash
-kubectl create configmap cmvolume --from-literal=var8=val8 --from-literal=var9=val9
+kubectl create configmap bash-script --from-file=script.sh
 kubectl run --generator=run-pod/v1 nginx --image=nginx -o yaml --dry-run -o yaml > pod.yaml
 vi pod.yaml
 ```
@@ -296,25 +300,23 @@ spec:
   volumes: # add a volumes list
   - name: myvolume # just a name, you'll reference this in the pods
     configMap:
-      name: cmvolume # name of your configmap
+      name: bash-script # name of your configmap
   containers:
   - image: nginx
-    imagePullPolicy: IfNotPresent
     name: nginx
     resources: {}
     volumeMounts: # your volume mounts are listed here
     - name: myvolume # the name that you specified in pod.spec.volumes.name
-      mountPath: /etc/lala # the path inside your container
+      mountPath: /etc/example # the path inside your container
+      defaultMode: 510 # change permission
   dnsPolicy: ClusterFirst
-  restartPolicy: Never
+  restartPolicy: Always
 status: {}
 ```
 
 ```bash
-kubectl exec -it nginx -- /bin/sh
-cd /etc/lala
-ls # will show var8 var9
-cat var8 # will show val8
+kubectl create -f pod.yaml
+kubectl exec nginx -- sh -c '/etc/example/script.sh'
 ```
 
 </p>
@@ -452,7 +454,7 @@ kubectl create secret generic mysecret --from-literal=password=mypass
 </p>
 </details>
 
-### Create a secret called mysecret2 that gets key/value from a file
+### Create a secret called mysecret2 that gets key/value from a file. Describe the secret.
 
 Create a file called username with the value admin:
 
@@ -465,6 +467,20 @@ echo admin > username
 
 ```bash
 kubectl create secret generic mysecret2 --from-file=username
+kubectl describe secret mysecret2
+```
+
+```bash
+Name:         mysecret2
+Namespace:    default
+Labels:       <none>
+Annotations:  <none>
+
+Type:  Opaque
+
+Data
+====
+username:  6 bytes
 ```
 
 </p>
@@ -477,19 +493,19 @@ kubectl create secret generic mysecret2 --from-file=username
 
 ```bash
 kubectl get secret mysecret2 -o yaml --export
-echo YWRtaW4K | base64 -d # shows 'admin'
+echo 'YWRtaW4K' | base64 -d # shows 'admin'
 ```
 
 </p>
 </details>
 
-### Create an nginx pod that mounts the secret mysecret2 in a volume on path /etc/foo
+### Create a nginx pod that mounts the secret mysecret2 in a volume on path /etc/foo
 
 <details><summary>show</summary>
 <p>
 
 ```bash
-kubectl run --restart=Never nginx --image=nginx -o yaml --dry-run - > pod.yaml
+kubectl run --generator=run-pod/v1 nginx --image=nginx --dry-run -o yaml > pod.yaml
 vi pod.yaml
 ```
 
@@ -508,14 +524,13 @@ spec:
       secretName: mysecret2 # name of the secret - this must already exist on pod creation
   containers:
   - image: nginx
-    imagePullPolicy: IfNotPresent
     name: nginx
     resources: {}
     volumeMounts: # our volume mounts
     - name: foo # name on pod.spec.volumes
       mountPath: /etc/foo #our mount path
   dnsPolicy: ClusterFirst
-  restartPolicy: Never
+  restartPolicy: Always
 status: {}
 ```
 
@@ -524,6 +539,59 @@ kubectl create -f pod.yaml
 kubectl exec -it nginx /bin/bash
 ls /etc/foo  # shows username
 cat /etc/foo/username # shows admin
+```
+
+or
+
+```bash
+
+kubectl exec nginx -- sh -c 'ls /etc/foo' # shows username
+kubectl exec nginx -- sh -c 'cat /etc/foo/username' # shows admin
+```
+
+</p>
+</details>
+
+### Modify the previous deployment. Change the permission of the secret file to read-only.
+
+<details><summary>show</summary>
+<p>
+
+```bash
+kubectl delete -f pod.yaml
+vi pod.yaml
+```
+
+```YAML
+apiVersion: v1
+kind: Pod
+metadata:
+  creationTimestamp: null
+  labels:
+    run: nginx
+  name: nginx
+spec:
+  volumes:
+  - name: foo
+    secret: 
+      secretName: mysecret2 
+  containers:
+  - image: nginx
+    name: nginx
+    resources: {}
+    volumeMounts: 
+    - name: foo 
+      mountPath: /etc/foo 
+      readOnly: true # Add this line
+  dnsPolicy: ClusterFirst
+  restartPolicy: Always
+status: {}
+```
+
+```bash
+kubectl create -f pod.yaml
+kubectl exec -it nginx bash
+# Try to edit the file
 ```
 
 </p>
@@ -536,7 +604,7 @@ cat /etc/foo/username # shows admin
 
 ```bash
 kubectl delete po nginx
-kubectl run nginx --image=nginx --restart=Never -o yaml --dry-run > pod.yaml
+kubectl run --generator=run-pod/v1 nginx --image=nginx --dry-run -o yaml > pod.yaml
 vi pod.yaml
 ```
 
@@ -568,6 +636,141 @@ status: {}
 ```bash
 kubectl create -f pod.yaml
 kubectl exec -it nginx -- env | grep USERNAME | cut -d '=' -f 2 # will show 'admin'
+```
+
+</p>
+</details>
+
+### Create a secret called mysecret3 manually using YAML files. This secret saves two strings: username and password. Get the value of mysecret3
+
+
+<details><summary>show</summary>
+<p>
+
+```bash
+# For example:
+echo -n 'pepe' | base64
+echo -n 'pepito123' | base64
+
+kubectl create secret generic mysecret3  --from-literal=username=xx --from-literal=password=xxx --dry-run -o yaml > secret.yaml
+vim secret.yaml
+```
+
+```YAML
+apiVersion: v1
+data:
+  password: eHh4 # Replace this value with cGVwZQ==
+  username: eHg= # Replace this value with cGVwaXRvMTIz
+kind: Secret
+metadata:
+  creationTimestamp: null
+  name: mysecret3
+```
+
+```bash
+kubectl create -f secret.yaml
+kubectl get secrets mysecret3 -o yaml
+
+echo 'cGVwZQ==' | base64 -d # shows 'pepe'
+echo 'cGVwaXRvMTIz' | base64 -d # shows 'pepito123'
+```
+
+</p>
+</details>
+
+### Create a secret called mysecret4 with unencoded strings using the stringData map.
+The stringData field is provided for convenience, and allows you to provide secret data as unencoded strings.
+
+String data example: 
+app_url=http://wwww.my-app.com
+username=lola
+password=lolita123
+
+
+<details><summary>show</summary>
+<p>
+
+```bash
+kubectl create secret generic mysecret4 --from-literal=app_url=x --from-literal=username=x --from-literal=password=x --dry-run -o yaml > secret.yaml
+vim secret.yaml
+```
+
+Change the secret.yaml file from:
+
+```YAML
+apiVersion: v1
+data:
+  app_url: eA==
+  password: eA==
+  username: eA==
+kind: Secret
+metadata:
+  creationTimestamp: null
+  name: mysecret4
+```
+
+to:
+
+```YAML
+apiVersion: v1
+stringData: # change the map from data to stringData 
+  app_url: http://wwww.my-app.com # Add this line
+  password: lola # Add this line
+  username: lolita123 # Add this line
+kind: Secret
+metadata:
+  creationTimestamp: null
+  name: mysecret4
+```
+
+```bash
+kubectl create -f secret.yaml
+kubectl get secrets mysecret4 -o yaml
+
+echo 'aHR0cDovL3d3d3cubXktYXBwLmNvbQ==' | base64 -d # shows 'http://wwww.my-app.com'
+echo 'bG9sYQ==' | base64 -d # shows 'lola'
+echo 'bG9saXRhMTIz' | base64 -d # shows 'lolita123'
+```
+
+</p>
+</details>
+
+
+### If a field is specified in both data and stringData maps, the value from stringData is used. Test it in a new secret.
+
+String data examples:
+data map --> alien
+stringData map --> cowboy 
+
+<details><summary>show</summary>
+<p>
+
+```bash
+echo -n 'alien' | base64 # Enconde alien --> YWxpZW4=
+
+# Create a secret file
+vim secret.yaml
+```
+
+
+```YAML
+apiVersion: v1
+kind: Secret
+metadata:
+  name: mysecret5
+type: Opaque
+data:
+  username: YWxpZW4=
+stringData:
+  username: cowboy
+```
+
+
+```bash
+kubectl create -f secret.yaml
+kubectl get secrets mysecret5 -o yaml
+
+echo 'Y293Ym95' | base64 -d # shows 'cowboy'
 ```
 
 </p>
