@@ -7,7 +7,7 @@
 <p>
 
 ```bash
-kubectl run nginx --image=nginx --restart=Never --port=80 --expose
+kubectl run --generator=run-pod/v1 nginx --image=nginx --port=80 --expose
 # observe that a pod as well as a service are created
 ```
 
@@ -101,7 +101,7 @@ wget -O- NODE_IP:31931 # if you're using Kubernetes with Docker for Windows/Mac,
 
 
 ```bash
-kubectl run foo --image=dgkanatsios/simpleapp --labels=app=foo --port=8080 --replicas=3
+kubectl run --generator=deployment/v1beta1 foo --image=dgkanatsios/simpleapp --replicas=3 --labels=app=foo --port=8080
 ```
 
 </p>

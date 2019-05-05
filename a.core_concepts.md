@@ -8,7 +8,7 @@
 
 ```bash
 kubectl create namespace mynamespace
-kubectl run nginx --image=nginx --restart=Never -n mynamespace
+kubectl run --generator=run-pod/v1 nginx --image=nginx -n mynamespace
 ```
 
 </p>
@@ -22,7 +22,7 @@ kubectl run nginx --image=nginx --restart=Never -n mynamespace
 Easily generate YAML with:
 
 ```bash
-kubectl run nginx --image=nginx --restart=Never --dry-run -o yaml > pod.yaml
+kubectl run --generator=run-pod/v1 nginx --image=nginx -o yaml --dry-run > pod.yaml
 ```
 
 ```bash
@@ -44,7 +44,7 @@ spec:
     name: nginx
     resources: {}
   dnsPolicy: ClusterFirst
-  restartPolicy: Never
+  restartPolicy: Always
 status: {}
 ```
 
@@ -55,7 +55,7 @@ kubectl create -f pod.yaml -n mynamespace
 Alternatively, you can run in one line
 
 ```bash
-kubectl run nginx --image=nginx --restart=Never --dry-run -o yaml | kubectl create -n mynamespace -f -
+kubectl run --generator=run-pod/v1 nginx --image=nginx -o yaml --dry-run | kubectl create -n mynamespace -f -
 ```
 
 </p>
@@ -67,9 +67,9 @@ kubectl run nginx --image=nginx --restart=Never --dry-run -o yaml | kubectl crea
 <p>
 
 ```bash
-kubectl run busybox --image=busybox --command --restart=Never -it -- env # -it will help in seeing the output
+kubectl run --generator=run-pod/v1 busybox --image=busybox -it -- sh -c 'env' # -it will help in seeing the output
 # or, just run it without -it
-kubectl run busybox --image=busybox --command --restart=Never -- env
+kubectl run --generator=run-pod/v1 busybox --image=busybox -- sh -c 'env'
 # and then, check its logs
 kubectl logs busybox
 ```
@@ -84,7 +84,7 @@ kubectl logs busybox
 
 ```bash
 # create a  YAML template with this command
-kubectl run busybox --image=busybox --restart=Never --dry-run -o yaml --command  -- env > envpod.yaml
+kubectl run --generator=run-pod/v1 busybox --image=busybox -o yaml --dry-run -- sh -c 'env' > envpod.yaml
 # see it
 cat envpod.yaml
 ```
@@ -99,13 +99,16 @@ metadata:
   name: busybox
 spec:
   containers:
-  - command:
+  - args:
+    - sh
+    - -c
     - env
     image: busybox
+    imagePullPolicy: IfNotPresent
     name: busybox
     resources: {}
   dnsPolicy: ClusterFirst
-  restartPolicy: Never
+  restartPolicy: Always
 status: {}
 ```
 
@@ -113,6 +116,12 @@ status: {}
 # apply it and then see the logs
 kubectl apply -f envpod.yaml
 kubectl logs busybox
+```
+
+Alternatively, you can run in one line
+
+```bash
+kubectl run --generator=run-pod/v1 busybox --image=busybox -o yaml --dry-run -- sh -c 'env' | kubectl create -f -
 ```
 
 </p>
@@ -160,7 +169,7 @@ kubectl get po --all-namespaces
 <p>
 
 ```bash
-kubectl run nginx --image=nginx --restart=Never --port=80
+kubectl run --generator=run-pod/v1 nginx --image=nginx --port=80
 ```
 
 </p>
@@ -194,7 +203,7 @@ kubectl get po nginx -o jsonpath='{.spec.containers[].image}{"\n"}'
 ```bash
 kubectl get po -o wide # get the IP, will be something like '10.1.1.131'
 # create a temp busybox pod
-kubectl run busybox --image=busybox --rm -it --restart=Never -- sh
+kubectl run --generator=run-pod/v1 busy --image=busybox -it --rm
 # run wget on specified IP:Port
 wget -O- 10.1.1.131:80
 exit
@@ -281,9 +290,7 @@ kubectl exec -it nginx -- /bin/sh
 <p>
 
 ```bash
-kubectl run busybox --image=busybox -it --restart=Never -- echo 'hello world'
-# or
-kubectl run busybox --image=busybox -it --restart=Never -- /bin/sh -c 'echo hello world'
+kubectl run --generator=run-pod/v1 busybox --image=busybox -- sh -c 'echo Hello World'
 ```
 
 </p>
@@ -295,7 +302,7 @@ kubectl run busybox --image=busybox -it --restart=Never -- /bin/sh -c 'echo hell
 <p>
 
 ```bash
-kubectl run busybox --image=busybox -it --rm --restart=Never -- /bin/sh -c 'echo hello world'
+kubectl run --generator=run-pod/v1 busybox --it --rm --image=busybox -- sh -c 'echo Hello World'
 kubectl get po # nowhere to be found :)
 ```
 
@@ -308,7 +315,7 @@ kubectl get po # nowhere to be found :)
 <p>
 
 ```bash
-kubectl run nginx --image=nginx --restart=Never --env=var1=val1
+kubectl run --generator=run-pod/v1 nginx --image=nginx --env=var1=val1
 # then
 kubectl exec -it nginx -- env
 # or

@@ -3,7 +3,7 @@
 
 ## Liveness and readiness probes
 
-### Create an nginx pod with a liveness probe that just runs the command 'ls'. Save its YAML in pod.yaml. Run it, check its probe status, delete it.
+### Create an nginx pod with a liveness probe that just runs the command 'ls'. Save its YAML in pod-1.yaml. Run it, check its probe status, delete it.
 
 <details><summary>show</summary>
 <p>
@@ -54,6 +54,7 @@ kubectl delete -f pod-1.yaml
 
 ```bash
 kubectl explain pod.spec.containers.livenessProbe # get the exact names
+vim pod-1.yaml
 ```
 
 ```YAML
@@ -133,6 +134,50 @@ kubectl delete -f pod-2.yaml
 
 </p>
 </details>
+
+### Create an nginx pod (that includes port 80) with an TCP readinessProbe on port 80. Save its YAML in pod-3.yaml, run it, check the readinessProbe, delete it.
+
+<details><summary>show</summary>
+<p>
+
+```bash
+kubectl run --generator=run-pod/v1 nginx --image=nginx --port=80 -o yaml --dry-run > pod-3.yaml
+vim pod-3.yaml
+```
+
+```YAML
+apiVersion: v1
+kind: Pod
+metadata:
+  creationTimestamp: null
+  labels:
+    run: nginx
+  name: nginx
+spec:
+  containers:
+  - image: nginx
+    imagePullPolicy: IfNotPresent
+    name: nginx
+    ports:
+    - containerPort: 80
+    readinessProbe: # declare the readiness probe
+      tcpSocket: # add the following lines
+        port: 80
+    resources: {}
+  dnsPolicy: ClusterFirst
+  restartPolicy: Always
+status: {}
+```
+
+```bash
+kubectl create -f pod-3.yaml
+kubectl describe pod nginx | grep -i readiness # to see the pod readiness details
+kubectl delete -f pod-3.yaml
+```
+
+</p>
+</details>
+
 
 ## Logging
 

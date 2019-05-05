@@ -163,6 +163,22 @@ kubectl delete po nginx{1..3}
 </p>
 </details>
 
+### Create a nginx pod with 3 different labels. e.g author=rosa, env=prod and tier=frontend. Show the labels. Delete the pod.
+
+<details><summary>show</summary>
+<p>
+
+```bash
+kubectl run --generator=run-pod/v1 nginx-rosa --image=nginx --labels=tier=frontend,env=prod,author=rosa
+kubectl get pods --show-labels 
+kubectl delete pods nginx-rosa
+```
+
+</p>
+</details>
+
+
+
 ## Deployments
 
 ### Create a deployment with image nginx:1.7.8, called nginx, having 2 replicas, defining port 80 as the port that this container exposes (don't create a service for this deployment)
@@ -430,6 +446,122 @@ kubectl delete hpa nginx
 </p>
 </details>
 
+### A replicaset with the same label as the pod can act as replica set for this pods. Create a nginx pod with label app=frontend. Create a replica set  with label app= frontend and 3 replicas. Scale the replicaset to 0, check what happend. Scale the replicaset again to 3. Delete the repica set and leave the pods.
+
+<details><summary>show</summary>
+<p>
+
+```bash
+kubectl run --generator=run-pod/v1 nginx --image=nginx --labels=app=frontend
+
+# List the number of pods
+kubectl get pods
+
+# Create the replica set
+vim replica.yaml
+```
+
+```yaml
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  name: nginx
+  labels:
+    app: frontend
+spec:
+  # modify replicas according to your case
+  replicas: 3
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+    spec:
+      containers:
+      - name: nginx
+        image: nginx
+```
+
+```bash
+# List the number of pods and check that only 2 pods were created
+kubectl get pods
+
+# Change the number of replicas to 0. You will see that the pod created before will be deleted.
+kubectl scale replicaset nginx --replicas=0
+kubectl get all
+
+# Scale again the replicaset to 3
+kubectl scale replicaset nginx --replicas=3
+kubectl get all
+
+# Delete the replicaset without deleting the pods
+kubectl delete rs nginx --cascade=false
+kubectl get all
+```
+</p>
+</details>
+
+
+### A pod can be insolate from a replicaset changing the label. Create a replicaset with label app=my-nginx and 3 replicas.
+TO CHANGE
+<details><summary>show</summary>
+<p>
+
+```bash
+kubectl run --generator=run-pod/v1 nginx --image=nginx --labels=app=frontend
+
+# List the number of pods
+kubectl get pods
+
+# Create the replica set
+vim replica.yaml
+```
+
+```yaml
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  name: nginx
+  labels:
+    app: frontend
+spec:
+  # modify replicas according to your case
+  replicas: 3
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+    spec:
+      containers:
+      - name: nginx
+        image: nginx
+```
+
+```bash
+# List the number of pods and check that only 2 pods were created
+kubectl get pods
+
+# Change the number of replicas to 0. You will see that the pod created before will be deleted.
+kubectl scale replicaset nginx --replicas=0
+kubectl get all
+
+# Scale again the replicaset to 3
+kubectl scale replicaset nginx --replicas=3
+kubectl get all
+
+# Delete the replicaset without deleting the pods
+kubectl delete rs nginx --cascade=false
+kubectl get all
+```
+</p>
+</details>
+
+
 ## Jobs
 
 ### Create a job with image perl that runs default command with arguments "perl -Mbignum=bpi -wle 'print bpi(2000)'"
@@ -644,6 +776,60 @@ kubectl logs busybox-1529745840-m867r
 # Bear in mind that Kubernetes will run a new job/pod for each new cron job
 kubectl delete cj busybox
 ```
+
+### Create again the previous cronjob with the Jobs history Limits fields. Number of failed finished jobs to retain to 6. Number of successful finished jobs to retain to 2.
+
+<details><summary>show</summary>
+<p>
+
+```bash
+kubectl run busybox --image=busybox --restart=OnFailure --schedule="*/1 * * * *" -o yaml --dry-run -- /bin/sh -c 'date; echo Hello from the Kubernetes cluster' > cronjob.yaml
+```
+
+```yaml
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  creationTimestamp: null
+  labels:
+    run: busybox
+  name: busybox
+spec:
+  concurrencyPolicy: Allow
+  successfulJobsHistoryLimit: 2  # The number of successful finished jobs to retain
+  failedJobsHistoryLimit: 6  # The number of failed finished jobs to retain
+  jobTemplate:
+    metadata:
+      creationTimestamp: null
+    spec:
+      template:
+        metadata:
+          creationTimestamp: null
+          labels:
+            run: busybox
+        spec:
+          containers:
+          - args:
+            - /bin/sh
+            - -c
+            - date; echo Hello from the Kubernetes cluster
+            image: busybox
+            name: busybox
+            resources: {}
+          restartPolicy: OnFailure
+  schedule: '*/1 * * * *'
+status: {}
+```
+
+```bash
+kubectl create -f cronjob.yaml
+
+# wait for some minutes and check that no more than 2 completed jobs are listed 
+kubectl get pods
+```
+
+</p>
+</details>
 
 </p>
 </details>
